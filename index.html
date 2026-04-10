@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioAuth — Passwordless Login</title>
+  <link rel="stylesheet" href="style.css">
+
+  <!-- EmailJS SDK — required for sending OTP via email (no backend needed) -->
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-wrap">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<!-- Toasts -->
+<div id="toasts"></div>
+
+<!-- Success screen -->
+<div class="success-screen" id="successScreen">
+  <div class="s-ring">✓</div>
+  <h2>Access Granted</h2>
+  <p>IDENTITY VERIFIED · BEHAVIORAL MATCH</p>
+  <div class="s-email" id="successEmail"></div>
+  <button class="btn btn-s" style="margin-top:22px;" onclick="window.location.href='dashboard.html'">📊 &nbsp;Open Dashboard</button>
+</div>
+
+<!-- Step-up Auth Modal -->
+<div class="modal-wrap" id="stepModal">
+  <div class="modal">
+    <div class="modal-ico">⚠️</div>
+    <div class="modal-title">Step-Up Authentication</div>
+    <div class="modal-body">
+      Behavioral anomaly detected. Your typing pattern shows deviation from your enrolled profile.
+      A One-Time Password has been sent to your email — enter it below to verify your identity.
+    </div>
+
+    <!-- OTP status message (replaces on-screen display) -->
+    <div class="otp-label">OTP Status</div>
+    <div class="otp-row" id="otpWrap">
+      <!-- Populated by triggerStepUp() — shows "OTP sent to email" or demo fallback -->
+    </div>
+
+    <!-- OTP expiry timer -->
+    <div class="otp-timer-row">
+      <span class="otp-timer-label">Expires in:</span>
+      <span class="otp-timer-val" id="otpTimer">60s</span>
+    </div>
+
+    <!-- OTP Input boxes -->
+    <div class="otp-label" style="margin-top:14px;">Enter OTP</div>
+    <div class="otp-input-row" id="otpInputWrap">
+      <input class="otp-inp" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+      <input class="otp-inp" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+      <input class="otp-inp" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+      <input class="otp-inp" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+      <input class="otp-inp" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+      <input class="otp-inp" maxlength="1" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+    </div>
+    <div class="otp-error" id="otpError"></div>
+
+    <div class="modal-row" style="margin-top:16px;">
+      <button class="btn btn-g" id="cancelBtn">Cancel</button>
+      <button class="btn btn-p" id="verifyBtn">Verify &amp; Continue</button>
+    </div>
+  </div>
+</div>
+
+<!-- Page -->
+<div class="page" style="min-height:100vh; display:flex; align-items:center; justify-content:center; padding:22px;">
+  <div style="width:100%; max-width:428px;">
+
+    <!-- Brand -->
+    <div style="text-align:center; margin-bottom:24px;" class="rv" id="rv0">
+      <div class="brand" style="justify-content:center; margin-bottom:7px;">
+        <div class="brand-ico">
+          <svg viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="8" stroke="white" stroke-width="1.1" stroke-dasharray="2.8 2" opacity=".55"/>
+            <circle cx="10" cy="10" r="4" stroke="white" stroke-width="1.1" opacity=".82"/>
+            <circle cx="10" cy="10" r="1.6" fill="white"/>
+          </svg>
+        </div>
+        <span class="brand-txt">Bio<b>Auth</b></span>
+      </div>
+      <p style="font-size:.68rem; color:var(--t3);">Behavioral Biometric Authentication — HDR-PS6</p>
+    </div>
+
+    <!-- Card -->
+    <div class="glass rv" id="rv1" style="padding:24px;">
+
+      <!-- Top row -->
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:18px;">
+        <div>
+          <h2 style="font-size:1.08rem; font-weight:700; color:var(--t1); margin-bottom:2px;">Identity Verification</h2>
+          <p style="font-size:.67rem; color:var(--t3);">Your behavior is your password</p>
+        </div>
+        <div class="mode-tag en" id="modeTag">
+          <span class="blink"></span>Enroll Mode
+        </div>
+      </div>
+
+      <!-- Sensor pills -->
+      <div class="pills">
+        <div class="pill" id="pK">⌨ Keystroke</div>
+        <div class="pill" id="pM">⊕ Mouse</div>
+        <div class="pill" id="pS">◉ Session</div>
+      </div>
+
+      <!-- Trust meter -->
+      <div style="margin-bottom:16px;">
+        <div class="trust-row">
+          <div>
+            <div style="font-size:.58rem; font-weight:500; color:var(--t3); text-transform:uppercase; letter-spacing:1.4px; margin-bottom:3px;">Trust Score</div>
+            <div style="font-size:.67rem; color:var(--t3);" id="trustStatus">Start typing to analyze…</div>
+          </div>
+          <div class="trust-num e" id="trustNum">--</div>
+        </div>
+        <div class="bar-wrap">
+          <div class="bar" id="barFill"></div>
+        </div>
+      </div>
+
+      <!-- Metrics -->
+      <div class="met-row">
+        <div class="met lift">
+          <span class="mv b" id="mKS">0</span>
+          <span class="ml">Keystrokes</span>
+        </div>
+        <div class="met lift">
+          <span class="mv b" id="mMM">0</span>
+          <span class="ml">Mouse Events</span>
+        </div>
+        <div class="met lift">
+          <span class="mv r" id="mAN">0</span>
+          <span class="ml">Anomalies</span>
+        </div>
+      </div>
+
+      <!-- Alert -->
+      <div class="alert" id="alertBox">
+        <span class="a-ico" id="alertIcon"></span>
+        <span class="a-msg" id="alertMsg"></span>
+      </div>
+
+      <!-- Fields -->
+      <div class="field">
+        <label class="lbl">Email Address</label>
+        <input class="inp" type="email" id="emailField" placeholder="you@example.com" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="field">
+        <label class="lbl">
+          Passphrase
+          <span class="hint">— demo phrase (type naturally, don't paste)</span>
+        </label>
+        <input
+          class="inp"
+          type="text"
+          id="passField"
+          placeholder="Type: "
+          autocomplete="off"
+        >
+        <!-- Demo helper -->
+        <div style="margin-top:6px; font-size:.6rem; color:var(--t3); display:flex; justify-content:space-between; align-items:center;">
+          <span>⚡ Demo phrase: <b style="color:var(--t1)">BioAuth@Secure#9</b></span>
+          <button
+            onclick="fillDemo()"
+            style="background:none; border:none; color:var(--blue); font-size:.6rem; cursor:pointer;"
+          >
+            Auto-fill
+          </button>
+        </div>
+      </div>
+
+      <!-- Buttons -->
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <button class="btn btn-p btn-full" id="enrollBtn">📡 &nbsp;Enroll Biometric Profile</button>
+        <button class="btn btn-s btn-full" id="authBtn" style="display:none;">🔐 &nbsp;Authenticate</button>
+        <button class="btn btn-g btn-full" id="dashBtn">📊 &nbsp;Open Dashboard</button>
+      </div>
+
+      <!-- Log -->
+      <div style="margin-top:16px;">
+        <div style="font-size:.57rem; font-weight:500; color:var(--t3); text-transform:uppercase; letter-spacing:1.4px; margin-bottom:5px;">System Log</div>
+        <div class="log" id="sysLog">
+          <div class="log-line">
+            <span class="lt">--:--:--</span>
+            <span class="lk">[SYS]</span>
+            <span class="lm">BioAuth engine initialized</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Footer -->
+    <div style="text-align:center; margin-top:14px; font-size:.6rem; color:var(--t3);" class="rv" id="rv2">
+      Lag Ninjas · TMU Hackathon 2026 · HDR-PS6 · Cyber Security
+    </div>
+
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

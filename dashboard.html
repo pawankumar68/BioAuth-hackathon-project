@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioAuth — Security Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
+  <style>
+    .anom-scroll { max-height:240px; overflow-y:auto; }
+    .tbl-scroll  { max-height:240px; overflow-y:auto; }
+  </style>
+</head>
+<body>
+
+<!-- Background -->
+<div class="bg-wrap">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+</div>
+
+<div id="toasts"></div>
+
+<!-- Mobile sidebar overlay -->
+<div class="sb-overlay" id="sbOverlay"></div>
+
+<!-- Clear Modal -->
+<div class="modal-wrap" id="clearModal">
+  <div class="modal">
+    <div class="modal-ico">🗑️</div>
+    <div class="modal-title">Clear Profile Data?</div>
+    <div class="modal-body">This will permanently delete your enrolled biometric profile and all session history. This cannot be undone.</div>
+    <div class="modal-row">
+      <button class="btn btn-g" id="clearCancelBtn">Cancel</button>
+      <button class="btn btn-d" id="clearBtn">Clear Data</button>
+    </div>
+  </div>
+</div>
+
+<div class="dash-wrap">
+
+  <!-- Mobile top bar -->
+  <div class="mob-topbar">
+    <button class="hamburger" id="hamburger" aria-label="Open menu">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="brand">
+      <div class="brand-ico">
+        <svg viewBox="0 0 20 20" fill="none">
+          <circle cx="10" cy="10" r="8" stroke="white" stroke-width="1.1" stroke-dasharray="2.8 2" opacity=".55"/>
+          <circle cx="10" cy="10" r="4" stroke="white" stroke-width="1.1" opacity=".82"/>
+          <circle cx="10" cy="10" r="1.6" fill="white"/>
+        </svg>
+      </div>
+      <span class="brand-txt">Bio<b>Auth</b></span>
+    </div>
+    <div class="badge bd"><span class="dot p"></span>Live</div>
+  </div>
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sb-top">
+      <div class="brand">
+        <div class="brand-ico">
+          <svg viewBox="0 0 20 20" fill="none">
+            <circle cx="10" cy="10" r="8" stroke="white" stroke-width="1.1" stroke-dasharray="2.8 2" opacity=".55"/>
+            <circle cx="10" cy="10" r="4" stroke="white" stroke-width="1.1" opacity=".82"/>
+            <circle cx="10" cy="10" r="1.6" fill="white"/>
+          </svg>
+        </div>
+        <span class="brand-txt">Bio<b>Auth</b></span>
+      </div>
+      <div style="font-size:.57rem; color:var(--t3); margin-top:5px;">Security Dashboard</div>
+    </div>
+
+    <div class="nav-sec">
+      <span class="nav-lbl">Monitor</span>
+      <div class="nav-i on" data-nav="overview"><span class="ni">⬡</span>Overview</div>
+      <div class="nav-i" data-nav="analytics"><span class="ni">📊</span>Analytics</div>
+      <div class="nav-i" data-nav="sessions"><span class="ni">🔍</span>Sessions</div>
+    </div>
+
+    <div class="nav-sec" style="margin-top:8px;">
+      <span class="nav-lbl">Security</span>
+      <div class="nav-i" data-nav="anomalies"><span class="ni">⚠️</span>Anomalies</div>
+      <div class="nav-i" data-nav="policies"><span class="ni">🛡</span>Policies</div>
+      <div class="nav-i" data-nav="stepup"><span class="ni">🔐</span>Step-Up Auth</div>
+    </div>
+
+    <div class="nav-sec" style="margin-top:8px;">
+      <span class="nav-lbl">Biometrics</span>
+      <div class="nav-i" data-nav="keystroke"><span class="ni">⌨</span>Keystroke</div>
+      <div class="nav-i" data-nav="mouse"><span class="ni">⊕</span>Mouse Behavior</div>
+      <div class="nav-i" data-nav="session-mon"><span class="ni">◉</span>Session Monitor</div>
+    </div>
+
+    <div class="nav-sec" style="margin-top:8px;">
+      <span class="nav-lbl">Actions</span>
+      <div class="nav-i" data-nav="login-demo"><span class="ni">↗</span>Login Demo</div>
+      <div class="nav-i" data-nav="clear"><span class="ni">🗑</span>Clear Profile</div>
+      <div class="nav-i" data-nav="logout"><span class="ni">🚪</span>Logout</div>
+    </div>
+
+    <div class="sb-foot">
+      <div class="uc">
+        <div class="ua" id="userAv">?</div>
+        <div>
+          <div class="un" id="userEmail">Not enrolled</div>
+          <div class="ur">SOC Analyst · Admin</div>
+        </div>
+      </div>
+      <!-- Session timer in sidebar -->
+      <div class="sb-session-info" id="sbSessionInfo" style="display:none;">
+        <div class="sb-sess-row"><span class="sb-sess-lbl">Session Active</span><span class="sb-sess-val" id="sbSessionTimer">0s</span></div>
+        <div class="sb-sess-row"><span class="sb-sess-lbl">Auth Status</span><span class="sb-sess-val" id="sbAuthStatus">--</span></div>
+        <button class="btn btn-d btn-full btn-sm" id="logoutBtn" style="margin-top:8px;">🚪 Logout</button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="dash-main" id="dashMain">
+
+    <!-- Header -->
+    <div class="page-hdr rv" id="rv0">
+      <div>
+        <div class="page-h1">Security Overview</div>
+        <div class="page-sub">Real-time behavioral biometric monitoring · Lag Ninjas · TMU 2026</div>
+      </div>
+      <div class="hdr-actions">
+        <div class="badge bd"><span class="dot p"></span>Live</div>
+        <button class="btn btn-g btn-sm" id="refreshBtn">↻ Refresh</button>
+        <button class="btn btn-d btn-sm" id="hdrLogoutBtn">🚪 Logout</button>
+      </div>
+    </div>
+
+    <!-- Status bar -->
+    <div class="sbar rv" id="rv1">
+      <span class="ld"></span>
+      <span style="color:var(--green); font-weight:600;">BioAuth ACTIVE</span>
+      <span style="color:var(--t3);">—</span>
+      <span style="color:var(--t3);">Keystroke: <strong style="color:var(--green);">On</strong></span>
+      <span style="color:var(--t3);">·</span>
+      <span style="color:var(--t3);">Mouse: <strong style="color:var(--green);">On</strong></span>
+      <span style="color:var(--t3);">·</span>
+      <span style="color:var(--t3);">Anomaly Detection: <strong style="color:var(--green);">Enabled</strong></span>
+      <span style="margin-left:auto; font-size:.58rem; color:var(--t3);" id="lastRefresh">Just now</span>
+    </div>
+
+    <!-- No profile warning -->
+    <div class="no-profile-warn rv" id="noProfileWarn" style="display:none;">
+      <span>⚠️</span>
+      <span>No biometric profile enrolled yet. <a href="index.html" style="color:var(--blue);">Go to Login page</a> to enroll first.</span>
+    </div>
+
+    <!-- Stat Cards -->
+    <div class="stat-grid rv" id="rv2">
+      <div class="sc lift">
+        <div class="sc-bar" style="background:linear-gradient(90deg,transparent,var(--blue),transparent)"></div>
+        <span class="si">🔐</span>
+        <span class="sv" id="dsTrust">--</span>
+        <span class="sl">Current Trust Score</span>
+      </div>
+      <div class="sc lift">
+        <div class="sc-bar" style="background:linear-gradient(90deg,transparent,var(--green),transparent)"></div>
+        <span class="si">⌨</span>
+        <span class="sv" id="dsKS">0</span>
+        <span class="sl">Total Keystrokes</span>
+      </div>
+      <div class="sc lift">
+        <div class="sc-bar" style="background:linear-gradient(90deg,transparent,var(--red),transparent)"></div>
+        <span class="si">⚠️</span>
+        <span class="sv" id="dsAnom">0</span>
+        <span class="sl">Anomalies Detected</span>
+      </div>
+      <div class="sc lift">
+        <div class="sc-bar" style="background:linear-gradient(90deg,transparent,var(--amber),transparent)"></div>
+        <span class="si">⏱</span>
+        <span class="sv" id="dsSession">0s</span>
+        <span class="sl">Session Duration</span>
+      </div>
+    </div>
+
+    <!-- Chart + Gauge -->
+    <div class="r31 rv" id="rv3">
+      <div class="panel">
+        <div class="ph">
+          <span class="pt">Trust Score Timeline</span>
+          <div class="badge bd"><span class="dot p"></span>Live</div>
+        </div>
+        <div class="pb">
+          <div class="chart-box"><canvas id="trustChart"></canvas></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph"><span class="pt">Current Trust Level</span></div>
+        <div class="gauge-wrap">
+          <div class="gauge-box">
+            <svg class="g-svg" width="140" height="140" viewBox="0 0 140 140">
+              <circle class="g-bg"   cx="70" cy="70" r="58"/>
+              <circle class="g-ring" id="gRing" cx="70" cy="70" r="58" stroke="var(--green)"/>
+            </svg>
+            <div class="gc">
+              <span class="gn" id="gNum">--</span>
+              <span class="gs">TRUST %</span>
+            </div>
+          </div>
+          <div class="badge bg" id="gBadge" style="margin-bottom:12px;"><span class="dot p"></span>Secure Session</div>
+          <div class="mini-g">
+            <div class="mc"><span class="mv2" id="miIKI">--</span><span class="ml2">Avg IKI</span></div>
+            <div class="mc"><span class="mv2" id="miMouse">--</span><span class="ml2">Mouse Events</span></div>
+            <div class="mc"><span class="mv2" id="miEnrolled">No</span><span class="ml2">Profile</span></div>
+            <div class="mc"><span class="mv2" id="miAuth">--</span><span class="ml2">Last Auth</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Anomaly Feed + Session Log -->
+    <div class="r2 rv" id="rv4">
+      <div class="panel">
+        <div class="ph">
+          <span class="pt">Anomaly Detection Log</span>
+          <div class="badge ba" id="anomBadge"><span class="dot p"></span>0 Alerts</div>
+        </div>
+        <div class="pb anom-scroll" id="anomFeed">
+          <div style="text-align:center; padding:26px 0; color:var(--t3); font-size:.7rem;">
+            <div style="font-size:1.3rem; margin-bottom:6px;">✅</div>
+            No anomalies detected
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="ph">
+          <span class="pt">Session Events</span>
+          <div class="badge bd"><span class="dot p"></span>Active</div>
+        </div>
+        <div class="tbl-scroll">
+          <table class="tbl">
+            <thead><tr><th>Event</th><th>Time</th><th>Status</th></tr></thead>
+            <tbody id="sessionLog">
+              <tr>
+                <td>Dashboard Init</td>
+                <td id="initTime">--:--</td>
+                <td><span class="badge bg">OK</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Signal Analysis -->
+    <div class="r1 rv" id="rv5">
+      <div class="panel">
+        <div class="ph">
+          <span class="pt">Behavioral Signal Analysis</span>
+          <div class="badge bd"><span class="dot p"></span>Enrolled vs Live</div>
+        </div>
+        <div class="pb">
+          <div class="sig-list" id="sigList">
+            <div style="color:var(--t3); font-size:.7rem; text-align:center; padding:16px 0;">
+              No data — enroll a profile on the login page first.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
