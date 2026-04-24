@@ -2,7 +2,7 @@
 
 > Your behavior is your password.
 
-🌐 **Live Demo:** [https://pawankumar68.github.io/Hackathon-Project/]( https://pawankumar68.github.io/BioAuth/)
+🌐 **Live Demo:** [https://pawankumar68.github.io/Hackathon-Project/]( https://pawankumar68.github.io/BioAuth-hackathon-project/)
 
 ---
 
